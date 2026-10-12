@@ -1,0 +1,942 @@
+{
+  "name": "DataSmithLab | App Store and Google Play changes to Google Sheets",
+  "nodes": [
+    {
+      "id": "4a3ff0d7-d607-5062-985f-984dbfc5b457",
+      "name": "Manual start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ],
+      "parameters": {}
+    },
+    {
+      "id": "c85c10df-de8d-532c-97d1-413426868d15",
+      "name": "Daily at 09:00 UTC",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        220,
+        300
+      ],
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 9 * * *"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "7843799b-4364-5ab2-9594-0fd56537da6c",
+      "name": "Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        440,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return [{json:{\n spreadsheetId:'REPLACE_WITH_SPREADSHEET_ID',\n maxTotalChargeUsd:0.10,\n actorInput:{appStoreApps:['389801252'],googlePlayApps:['com.instagram.android'],countries:['us'],chartLists:[],chartTopN:0,\n onlyNewOrChanged:true,ratingChangeThreshold:0.05,rankChangeThreshold:5,reviews:'off',maxItems:50}\n}}];"
+      }
+    },
+    {
+      "id": "8f7a5421-a6be-5941-8835-2d123897f9ab",
+      "name": "Validate configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const c=$input.first().json,a=c.actorInput;\nif (!c.spreadsheetId || c.spreadsheetId.startsWith('REPLACE_')) throw new Error('Set spreadsheetId.');\nconst list=v=>Array.isArray(v)?v:[];\nconst ios=list(a.appStoreApps),play=list(a.googlePlayApps);\nif (ios.some(x=>typeof x!=='string'||!x.trim())||play.some(x=>typeof x!=='string'||!x.trim())||new Set(ios).size!==ios.length||new Set(play).size!==play.length) throw new Error('Use distinct, non-empty App Store ids/links and Google Play package names.');\nif (ios.length+play.length<1||ios.length+play.length>25) throw new Error('Track 1 to 25 apps.');\nconst countries=list(a.countries);\nif (countries.length<1||countries.length>5||countries.some(x=>!/^[a-z]{2}$/.test(x))||new Set(countries).size!==countries.length) throw new Error('Use 1 to 5 distinct two-letter country codes, for example us.');\nif (a.onlyNewOrChanged!==true) throw new Error('This starter needs onlyNewOrChanged true so each run returns only new or changed apps.');\nif (a.reviews!=='off') throw new Error('Review rows are not stored by this starter. Keep reviews off.');\nif (!list(a.chartLists).every(x=>['top-free','top-paid'].includes(x))) throw new Error('chartLists may contain top-free and top-paid only.');\nif (!Number.isInteger(a.chartTopN)||a.chartTopN<0||a.chartTopN>20) throw new Error('Use chartTopN 0 to 20.');\nif (!Number.isInteger(a.maxItems)||a.maxItems<1||a.maxItems>200) throw new Error('Use maxItems 1 to 200.');\nif (!Number.isFinite(c.maxTotalChargeUsd)||c.maxTotalChargeUsd<=0||c.maxTotalChargeUsd>1) throw new Error('Set a run charge cap above zero and no more than $1.');\nreturn [{json:c}];"
+      }
+    },
+    {
+      "id": "a21c8ca3-6d7d-5355-841f-604e43abbcbf",
+      "name": "Start Actor",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        300
+      ],
+      "parameters": {
+        "url": "={{ 'https://api.apify.com/v2/acts/datasmithlab~app-store-play-tracker/runs?timeout=600&memory=512&maxTotalChargeUsd='+$('Configuration').first().json.maxTotalChargeUsd }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 90000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        },
+        "method": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Configuration').first().json.actorInput) }}"
+      },
+      "executeOnce": true
+    },
+    {
+      "id": "22509495-355e-5d55-8323-02c8498750c5",
+      "name": "Wait before poll",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1100,
+        300
+      ],
+      "parameters": {
+        "resume": "timeInterval",
+        "amount": 5,
+        "unit": "seconds"
+      },
+      "webhookId": "607da4dc-6c4f-5e94-94ec-32e0c33e83d1"
+    },
+    {
+      "id": "f510b49a-c1c3-5488-ae7b-2d5c8c5b7a48",
+      "name": "Get run",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1320,
+        300
+      ],
+      "parameters": {
+        "url": "={{ 'https://api.apify.com/v2/actor-runs/'+$('Start Actor').first().json.data.id+'?waitForFinish=60' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 90000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "31eb1a5b-b9ff-51b8-a6e2-8578a4fcbd61",
+      "name": "Check run status",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1540,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const r=$input.first().json.data;\nif (!r?.id) throw new Error('Missing Apify run response.');\nif (['FAILED','TIMED-OUT','ABORTED'].includes(r.status)) throw new Error(`Apify run ${r.id}: ${r.status}. Check its log.`);\nif (Date.now()-Date.parse($('Start Actor').first().json.data.startedAt)>15*60*1000)\n  throw new Error('Polling deadline reached. Inspect the existing Apify run before starting another.');\nreturn [{json:{...r,finished:r.status==='SUCCEEDED'}}];"
+      }
+    },
+    {
+      "id": "9599f689-43fd-5ae3-a75b-ca8fbfa7d615",
+      "name": "Run finished",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1760,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0fb8014b-0d70-4d9b-a20a-2b31e1fa4d8e",
+              "leftValue": "={{ $json.finished }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "d68b4241-4ec9-567c-abdc-26c1e5aa298d",
+      "name": "Get HEALTH",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1980,
+        300
+      ],
+      "parameters": {
+        "url": "={{ 'https://api.apify.com/v2/key-value-stores/'+$('Check run status').first().json.defaultKeyValueStoreId+'/records/HEALTH' }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 90000,
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "351d16d7-0ed6-5f23-bb2e-2e5591fda88e",
+      "name": "Get apps",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2200,
+        300
+      ],
+      "parameters": {
+        "url": "={{ 'https://api.apify.com/v2/datasets/'+$('Check run status').first().json.defaultDatasetId+'/items?clean=true&limit='+($('Configuration').first().json.actorInput.maxItems+1) }}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {
+          "timeout": 90000,
+          "response": {
+            "response": {
+              "responseFormat": "json",
+              "fullResponse": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "id": "bd09f676-5252-550b-887f-da77266b046f",
+      "name": "Prepare rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const c=$('Configuration').first().json,a=c.actorInput;\nconst run=$('Check run status').first().json,health=$('Get HEALTH').first().json;\nconst items=$input.first().json.body;\nif (!Array.isArray(items)||health.apps+health.reviewRows!==items.length||items.length>a.maxItems||!Array.isArray(health.failed)||health.failed.length||health.blockedResponses>0||health.chargeLimitReached===true||run.stats?.restartCount>0) throw new Error('Incomplete or unreliable source response. Inspect HEALTH and APPS in the run; no rows written.');\nconst seen=new Set(),now=new Date().toISOString(),plain=v=>String(v??''),json=v=>v==null?'':JSON.stringify(v);\nconst rows=items.map(r=>{\n if (r.recordType!=='app'||typeof r.id!=='string'||!r.id||!r.name||!/^https?:\\/\\//i.test(r.url||'')||seen.has(r.id)) throw new Error('Unexpected record or duplicate app ID; no rows written.');\n seen.add(r.id);\n return {id:r.id,store:plain(r.store),appId:plain(r.appId),country:plain(r.country),name:plain(r.name),developer:plain(r.developer),category:plain(r.category),version:plain(r.version),lastUpdated:plain(r.lastUpdated),price:plain(r.price),currency:plain(r.currency),ratingAverage:plain(r.ratingAverage),ratingCount:plain(r.ratingCount),ranks:json(r.ranks),changeType:plain(r.changeType),changes:Array.isArray(r.changes)?r.changes.join(' | '):'',diff:json(r.diff),url:r.url,savedAt:now,runId:run.id};\n});\nconst events=rows.filter(r=>r.changeType==='CHANGED'||r.changeType==='REMOVED').map(r=>({eventKey:r.id+'|'+run.id,id:r.id,name:r.name,store:r.store,country:r.country,changeType:r.changeType,changes:r.changes,diff:r.diff,savedAt:r.savedAt,runId:r.runId}));\nreturn [{json:{rows,events,runId:run.id,observedRows:items.length,atLimit:items.length>=a.maxItems}}];"
+      }
+    },
+    {
+      "id": "4167ee47-2896-5b19-868d-3b272ce2bdd5",
+      "name": "Have rows",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2640,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "af217dce-3d4c-473b-977b-fecf6fd225ac",
+              "leftValue": "={{ $json.rows.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "1d379b8d-fc74-5349-a1ef-1a3cd8957d8e",
+      "name": "Expand rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2860,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return $('Prepare rows').first().json.rows.map(json=>({json}));"
+      }
+    },
+    {
+      "id": "abe1bb9c-43b0-5514-b077-a85574ac5ff7",
+      "name": "Save apps",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3080,
+        300
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Configuration').first().json.spreadsheetId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Apps",
+          "mode": "name"
+        },
+        "options": {
+          "cellFormat": "RAW",
+          "handlingExtraData": "ignoreIt"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "store",
+              "displayName": "store",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "appId",
+              "displayName": "appId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "country",
+              "displayName": "country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "developer",
+              "displayName": "developer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "category",
+              "displayName": "category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "version",
+              "displayName": "version",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "lastUpdated",
+              "displayName": "lastUpdated",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "price",
+              "displayName": "price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "currency",
+              "displayName": "currency",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ratingAverage",
+              "displayName": "ratingAverage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ratingCount",
+              "displayName": "ratingCount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ranks",
+              "displayName": "ranks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "changeType",
+              "displayName": "changeType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "changes",
+              "displayName": "changes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "diff",
+              "displayName": "diff",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "url",
+              "displayName": "url",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "savedAt",
+              "displayName": "savedAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "runId",
+              "displayName": "runId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      }
+    },
+    {
+      "id": "31f5cab6-2151-5afd-9129-7b3e03dfcacb",
+      "name": "Have events",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3300,
+        300
+      ],
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b5d1c9e0-3f6a-4a5e-9a57-0f6e3b5f2c11",
+              "leftValue": "={{ $('Prepare rows').first().json.events.length > 0 }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "7d64ff31-ddea-5f57-8595-8364cbd5c2f5",
+      "name": "Expand events",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "return $('Prepare rows').first().json.events.map(json=>({json}));"
+      }
+    },
+    {
+      "id": "63d2b23c-a43c-59ab-bdc9-f6e54b5f39a4",
+      "name": "Log changes",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        3740,
+        300
+      ],
+      "parameters": {
+        "resource": "sheet",
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('Configuration').first().json.spreadsheetId }}",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Changes",
+          "mode": "name"
+        },
+        "options": {
+          "cellFormat": "RAW",
+          "handlingExtraData": "ignoreIt"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "eventKey"
+          ],
+          "schema": [
+            {
+              "id": "eventKey",
+              "displayName": "eventKey",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "store",
+              "displayName": "store",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "country",
+              "displayName": "country",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "changeType",
+              "displayName": "changeType",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "changes",
+              "displayName": "changes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "diff",
+              "displayName": "diff",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "savedAt",
+              "displayName": "savedAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "runId",
+              "displayName": "runId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      }
+    },
+    {
+      "id": "c6ee5679-c8d5-58bb-b819-e6c29f06446d",
+      "name": "Run summary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3960,
+        300
+      ],
+      "parameters": {
+        "mode": "runOnceForAllItems",
+        "jsCode": "const d=$('Prepare rows').first().json;return [{json:{runId:d.runId,observedRows:d.observedRows,savedRows:d.rows.length,loggedEvents:d.events.length,newApps:d.rows.filter(r=>r.changeType==='NEW').length,atLimit:d.atLimit,deliveryMode:'sheets-only',note:d.rows.length?'No notification sent. REMOVED means the store no longer lists the app in that country, not that it was withdrawn.':'No new or changed apps this run.'}}];"
+      }
+    },
+    {
+      "id": "a46759ab-2742-5cf3-876b-c3f9798a1dd7",
+      "name": "Setup and delivery notes",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4180,
+        300
+      ],
+      "parameters": {
+        "content": "## App Store + Google Play changes to Sheets\nConfigure your own credentials and two tabs: Apps and Changes (header rows included).\nFirst run: every app is NEW (baseline). Later runs return only new or changed apps.\nApps = latest state per app, store and country. Changes = one row per app per run with a version, price, rating, rank change or removal.\nIf a run succeeded on Apify but the Sheet write failed, set onlyNewOrChanged to false for one run to refresh Apps; events from that run are not recreated.\n$0.10 Actor run cap. Daily 09:00 UTC; one execution at a time.",
+        "height": 400,
+        "width": 580
+      }
+    }
+  ],
+  "connections": {
+    "Manual start": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily at 09:00 UTC": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuration": {
+      "main": [
+        [
+          {
+            "node": "Validate configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate configuration": {
+      "main": [
+        [
+          {
+            "node": "Start Actor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Start Actor": {
+      "main": [
+        [
+          {
+            "node": "Wait before poll",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait before poll": {
+      "main": [
+        [
+          {
+            "node": "Get run",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get run": {
+      "main": [
+        [
+          {
+            "node": "Check run status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check run status": {
+      "main": [
+        [
+          {
+            "node": "Run finished",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Run finished": {
+      "main": [
+        [
+          {
+            "node": "Get HEALTH",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Wait before poll",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get HEALTH": {
+      "main": [
+        [
+          {
+            "node": "Get apps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get apps": {
+      "main": [
+        [
+          {
+            "node": "Prepare rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare rows": {
+      "main": [
+        [
+          {
+            "node": "Have rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Have rows": {
+      "main": [
+        [
+          {
+            "node": "Expand rows",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand rows": {
+      "main": [
+        [
+          {
+            "node": "Save apps",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save apps": {
+      "main": [
+        [
+          {
+            "node": "Have events",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Have events": {
+      "main": [
+        [
+          {
+            "node": "Expand events",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Run summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Expand events": {
+      "main": [
+        [
+          {
+            "node": "Log changes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log changes": {
+      "main": [
+        [
+          {
+            "node": "Run summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "timezone": "UTC",
+    "executionTimeout": 1200
+  },
+  "pinData": {},
+  "id": "DataSmithLabAppStoreStarter"
+}

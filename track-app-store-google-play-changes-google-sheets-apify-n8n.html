@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Track App Store &amp; Google Play Changes in Google Sheets | DataSmithLab</title>
+  <meta name="description" content="Keep the version, price, rating and chart position of selected iOS and Android apps in Google Sheets, and log every change, with Apify and an n8n starter.">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="https://datasmith-lab.github.io/datasmithlab-appstore-n8n/track-app-store-google-play-changes-google-sheets-apify-n8n.html">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Track App Store and Google Play Changes in Google Sheets with Apify and n8n">
+  <meta property="og:description" content="A scheduled n8n workflow that logs new versions, price changes, rating moves and chart changes for the apps you choose.">
+  <meta property="og:url" content="https://datasmith-lab.github.io/datasmithlab-appstore-n8n/track-app-store-google-play-changes-google-sheets-apify-n8n.html">
+  <meta name="twitter:card" content="summary">
+  <script type="application/ld+json">
+  {
+    "@context":"https://schema.org",
+    "@type":"Article",
+    "headline":"Track App Store and Google Play Changes in Google Sheets with Apify and n8n",
+    "description":"Log new versions, price changes, rating moves and chart changes for selected iOS and Android apps in Google Sheets.",
+    "datePublished":"2026-10-12",
+    "dateModified":"2026-10-12",
+    "author":{"@type":"Organization","name":"DataSmithLab"},
+    "publisher":{"@type":"Organization","name":"DataSmithLab"},
+    "mainEntityOfPage":{"@type":"WebPage","@id":"https://datasmith-lab.github.io/datasmithlab-appstore-n8n/track-app-store-google-play-changes-google-sheets-apify-n8n.html"}
+  }
+  </script>
+  <style>
+    :root{color-scheme:dark;--bg:#0b1119;--panel:#111c28;--text:#edf4fa;--muted:#b3c2d0;--line:#2b3a49;--accent:#ffd84a;--link:#8edcff}
+    *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:18px/1.72 system-ui,-apple-system,Segoe UI,sans-serif}
+    main{width:min(860px,100% - 40px);margin:0 auto;padding:48px 0 80px}a{color:var(--link);text-underline-offset:3px}a:hover{color:#fff}
+    .brand{font-size:13px;font-weight:800;letter-spacing:.14em;color:var(--muted);text-transform:uppercase}.brand b{color:var(--accent)}
+    h1{max-width:760px;font-size:clamp(36px,7vw,62px);line-height:1.07;letter-spacing:-.035em;margin:30px 0 18px}
+    h2{font-size:clamp(24px,4vw,32px);line-height:1.2;letter-spacing:-.02em;margin:46px 0 12px}p,li{color:var(--muted)}strong{color:var(--text)}
+    .dek{font-size:21px;line-height:1.5;color:#d2dee8;max-width:730px}
+    .callout{background:var(--panel);border:1px solid var(--line);border-left:4px solid var(--accent);padding:16px 20px;border-radius:10px;margin:28px 0}
+    .table{overflow-x:auto;margin:22px 0}table{border-collapse:collapse;width:100%;font-size:15px;min-width:560px}th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--line)}th{color:var(--text)}
+    .steps{padding-left:24px}.steps li{padding-left:5px;margin:10px 0}.links{display:flex;flex-wrap:wrap;gap:12px;margin:24px 0}.button{display:inline-block;padding:11px 15px;border-radius:8px;background:var(--accent);color:#121820;font-weight:750;text-decoration:none}.button.secondary{background:transparent;border:1px solid var(--line);color:var(--text)}
+    footer{margin-top:54px;border-top:1px solid var(--line);padding-top:20px;font-size:14px;color:var(--muted)}
+    @media(max-width:600px){main{width:min(100% - 28px,860px);padding-top:30px}.dek{font-size:18px}}
+  </style>
+</head>
+<body>
+<main>
+  <p class="brand"><b>DataSmithLab</b> · Apify + n8n + Google Sheets</p>
+  <article>
+    <header>
+      <h1>Track App Store and Google Play Changes in Google Sheets with Apify and n8n</h1>
+      <p class="dek">Store pages change quietly: a new version, a price tweak, a rating that slides. Here is how to keep the apps you care about in one Sheet and get a row whenever something moves.</p>
+    </header>
+    <p>If you follow your own apps and a few competitors, you probably open each store page now and then and hope to notice what changed. Version numbers, prices and ratings differ by store and by country, so the checking multiplies fast. A scheduled workflow does it for you and writes only what changed.</p>
+    <div class="callout"><strong>Scope:</strong> the starter tracks the iOS and Android apps you list, in up to five countries. Charts are Apple's official top 100 Top Free and Top Paid only. Google Play charts and reviews, keyword rankings and ASO analysis are not included, and the starter does not store review rows.</div>
+
+    <h2>The same app can look different in each store</h2>
+    <p>The <a href="https://apify.com/datasmithlab/app-store-play-tracker">App Store &amp; Google Play Tracker</a> reads Apple's public lookup and chart feeds and the public Google Play app page. A real run on 12 October 2026, for the United States:</p>
+    <div class="table">
+      <table>
+        <thead><tr><th scope="col">App</th><th scope="col">App Store rating</th><th scope="col">Google Play rating</th></tr></thead>
+        <tbody>
+          <tr><td>Instagram</td><td>4.69 (29,586,863 ratings)</td><td>3.99 (169,631,440 ratings)</td></tr>
+          <tr><td>Spotify: Music and Podcasts</td><td>4.77 (42,540,644 ratings)</td><td>4.35 (36,468,515 ratings)</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p>Both stores show the number each store reports. They are not directly comparable: audiences, prompts and rating rules differ. The point for tracking is that each app, store and country gets its own row, with its own history.</p>
+    <p>The same run also read Apple's US Top Free chart. The first three positions that day were Muse from Meta, Vinted: Pre-loved marketplace and ChatGPT. Chart positions move daily, so a threshold (five places by default) decides when a move counts as a change.</p>
+
+    <h2>What counts as a change</h2>
+    <p>The Actor reports a new version, a price or currency change, a rating that moved by at least your threshold (0.05 stars by default), a chart move or a chart entry or exit, and an app that the store no longer lists in a country. The first run marks every app <code>NEW</code>: your baseline. After that, apps that did not change are not returned at all, so a quiet day writes no rows. On 12 October 2026 a fresh app pair returned 2 <code>NEW</code> rows on the first call and 0 on the second.</p>
+
+    <h2>The n8n workflow</h2>
+    <p>A schedule starts one Actor run. Before anything is written, n8n checks the run status and the <code>HEALTH</code> report: failed lookups, blocked responses, the row count and the charge limit. If anything looks incomplete, the workflow stops and leaves your Sheet untouched. Otherwise it upserts the latest state of each app into an <code>Apps</code> tab and appends one row per change to a <code>Changes</code> tab, with the old and new values kept as JSON.</p>
+    <ol class="steps">
+      <li>Create <code>Apps</code> and <code>Changes</code> tabs and paste the header rows from the starter.</li>
+      <li>Import the inactive workflow and add your own Apify and Google credentials.</li>
+      <li>Enter your spreadsheet ID, your App Store ids or links, and your Google Play package names.</li>
+      <li>Run manually twice. The first run saves every app as <code>NEW</code>; the second should save nothing.</li>
+      <li>Enable the daily schedule only after both runs look right.</li>
+    </ol>
+
+    <h2>Limits worth knowing</h2>
+    <p>Some Google Play apps ship different builds per device and show no version, so they are tracked by update date. A <code>REMOVED</code> row means the store no longer lists the app in that country, which is not proof the app was withdrawn. The Actor charges a small start fee plus a per-row fee, unchanged apps cost no row fee, and the starter caps each run at $0.10; check the Store page for current prices. The tracker's memory is shared by all tasks in your Apify account. On 12 October 2026 the whole workflow ran against a real Google Sheet (2 apps saved as <code>NEW</code>, 0 rows on the second run), and the Changes tab was checked with synthetic events. No real version, price or rating change has been observed during testing, and a scheduled (timer-triggered) run of this exact workflow has not been tested; the structure follows the <a href="https://datasmith-lab.github.io/datasmithlab-ats-n8n/">career page starter</a>, whose schedule was verified.</p>
+
+    <h2>Try it</h2>
+    <p>Start with the apps you already care about, check the two manual runs, then schedule it.</p>
+    <div class="links">
+      <a class="button" href="https://apify.com/datasmithlab/app-store-play-tracker">Open the Apify Actor</a>
+      <a class="button secondary" href="https://github.com/Datasmith-lab/datasmithlab-appstore-n8n/releases/latest/download/app-changes-to-sheets-starter.zip">Download the n8n starter</a>
+      <a class="button secondary" href="https://github.com/Datasmith-lab/datasmithlab-appstore-n8n#setup">Read the setup guide</a>
+    </div>
+  </article>
+  <footer>DataSmithLab · Public store listing data only · Independent starter; not an official n8n directory listing. Not affiliated with Apple or Google.</footer>
+</main>
+</body>
+</html>
